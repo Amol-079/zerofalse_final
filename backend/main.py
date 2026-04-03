@@ -36,9 +36,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Zerofalse API",
     version="2.0.0",
-    docs_url="/api/docs" if not settings.is_production else None,
-    redoc_url=None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
+
 )
 
 
