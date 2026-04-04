@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Clerk
     CLERK_SECRET_KEY: str
     CLERK_WEBHOOK_SECRET: str
+    CLERK_JWT_PUBLIC_KEY: str = ""  # ← ADDED
 
     # Redis
     REDIS_URL: str = "redis://redis:6379"
@@ -45,6 +46,13 @@ class Settings(BaseSettings):
         if not v.startswith("whsec_"):
             raise ValueError("CLERK_WEBHOOK_SECRET must start with whsec_")
         return v
+
+    @field_validator("CLERK_JWT_PUBLIC_KEY")  # ← ADDED
+    @classmethod
+    def validate_jwt_public_key(cls, v: str) -> str:
+        if v and not v.strip().startswith("-----BEGIN PUBLIC KEY-----"):
+            raise ValueError("CLERK_JWT_PUBLIC_KEY must be a valid PEM public key")
+        return v.strip()
 
     @property
     def cors_origins_list(self) -> list[str]:
