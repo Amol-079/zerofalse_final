@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
         logger.critical("Supabase failed: %s", e)
         sys.exit(1)
     await _cache.get_redis()
-    logger.info("Ready — CORS: %s", settings.cors_origins_list)
+    logger.info("Ready — CORS: ['https://zerofalse-final.vercel.app']")
     yield
     await _cache.close()
 
