@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { setNavigateFn } from './api/client';
+import { setNavigateFn, setClerkTokenGetter } from './api/client';
 import { ThemeProvider } from './hooks/useTheme';
 import { Layout } from './components/Layout';
 import Landing from './pages/Landing';
@@ -34,11 +34,15 @@ function AppRoutes() {
 
   // setNavigateFn only — token getter is set inside AuthContext
   useEffect(() => {
-    if (!done.current) {
-      setNavigateFn(navigate);
-      done.current = true;
-    }
-  }, [navigate]);
+  if (!done.current) {
+    setNavigateFn(navigate);
+
+    // 🔥 THIS LINE FIXES EVERYTHING
+    setClerkTokenGetter(getToken);
+
+    done.current = true;
+  }
+}, [navigate, getToken]);
 
   return (
     <Routes>
