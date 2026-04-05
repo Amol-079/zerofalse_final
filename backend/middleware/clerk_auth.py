@@ -1,4 +1,4 @@
-"""Clerk JWT authentication — clean, stable version"""
+ """Clerk JWT authentication — clean, stable version"""
 
 import logging
 import jwt
@@ -16,7 +16,6 @@ settings = get_settings()
 AUTH_CACHE_TTL = 60
 AUTH_CACHE_PREFIX = "auth:v2:"
 
-# Load PEM key once
 _public_key = None
 
 
@@ -51,17 +50,14 @@ async def _verify_jwt(token: str) -> dict:
 async def get_current_user(
     authorization: str = Header(...)
 ) -> dict:
-    # 1. Check header
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
             detail="Missing Authorization header"
         )
 
-    # 2. Decode token
     token = authorization.split(" ", 1)[1]
     claims = await _verify_jwt(token)
-
     clerk_user_id = claims.get("sub")
 
     if not clerk_user_id:
@@ -70,7 +66,7 @@ async def get_current_user(
             detail="Token missing sub claim"
         )
 
-    # 3. Cache check
+    # Cache check
     cache_key = f"{AUTH_CACHE_PREFIX}{clerk_user_id}"
     cached = await cache_get(cache_key)
     if cached:
@@ -78,7 +74,7 @@ async def get_current_user(
 
     db = AsyncDB()
 
-    # 4. Try to get user
+    # Get user
     try:
         resp = await db.execute(
             lambda c: c.table("users")
@@ -88,35 +84,33 @@ async def get_current_user(
             .execute()
         )
     except Exception as e:
-        logger.error("DB error: %s", e)
-        raise HTTPException(
-            status_code=503,
-            detail="Database unavailable"
-        )
+        logger.error("DB error fetching user: %s", e)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
-    # 5. If user NOT found → create
-    if not resp.data:
+    if resp.data is None:
+        # User not found — create org + user
         try:
-            # create org
             org_resp = await db.execute(
                 lambda c: c.table("organizations")
-                .insert({"name": "Default Org"})
+                .insert({
+                    "name": "Default Org",
+                    "slug": f"org-{clerk_user_id[-8:]}"
+                })
                 .execute()
             )
             org = org_resp.data[0]
 
-            # create user
             user_resp = await db.execute(
                 lambda c: c.table("users")
                 .insert({
                     "clerk_user_id": clerk_user_id,
-                    "email": claims.get("email"),
-                    "full_name": claims.get("name"),
-                    "org_id": org["id"]
+                    "email": claims.get("email", ""),
+                    "full_name": claims.get("name", ""),
+                    "org_id": org["id"],
+                    "role": "admin"
                 })
                 .execute()
             )
-
             user = user_resp.data[0]
 
         except Exception as e:
@@ -128,10 +122,22 @@ async def get_current_user(
     else:
         user = resp.data
 
-    # 6. Cache + return
-    result = {"user": user}
-    await cache_set(cache_key, result, ttl=AUTH_CACHE_TTL)
+    # Get org separately
+    try:
+        org_resp = await db.execute(
+            lambda c: c.table("organizations")
+            .select("*")
+            .eq("id", user["org_id"])
+            .single()
+            .execute()
+        )
+        org = org_resp.data
+    except Exception as e:
+        logger.error("DB error fetching org: %s", e)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
+    result = {"user": user, "org": org}
+    await cache_set(cache_key, result, ttl=AUTH_CACHE_TTL)
     return result
 
 
