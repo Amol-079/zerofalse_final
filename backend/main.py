@@ -41,7 +41,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS must be first
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -87,7 +86,6 @@ app.include_router(dashboard_router,     prefix="/api/v1")
 app.include_router(keys_router,          prefix="/api/v1")
 app.include_router(alerts_router,        prefix="/api/v1")
 app.include_router(webhooks_router,      prefix="/api/v1")
-
 
 if __name__ == "__main__":
     import uvicorn
