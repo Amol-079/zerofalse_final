@@ -70,23 +70,20 @@ async def get_current_user(
         return cached
 
     db = AsyncDB()
-    uid = clerk_user_id  # fix lambda closure
+    uid = clerk_user_id
 
-    # Get user
+    # Get user - removed maybe_single()
     try:
         resp = await db.execute(
             lambda c: c.table("users")
             .select("*")
             .eq("clerk_user_id", uid)
-            .maybe_single()
             .execute()
         )
+        user_data = resp.data[0] if resp and resp.data else None
     except Exception as e:
         logger.error("DB error fetching user: %s", e)
         raise HTTPException(status_code=503, detail="Database unavailable")
-
-    # Fix: resp itself can be None
-    user_data = resp.data if resp is not None else None
 
     if user_data is None:
         try:
@@ -125,19 +122,18 @@ async def get_current_user(
     else:
         user = user_data
 
-    # Get org
+    # Get org - removed single()
     org_id = user["org_id"]
     try:
         org_resp = await db.execute(
             lambda c: c.table("organizations")
             .select("*")
             .eq("id", org_id)
-            .single()
             .execute()
         )
-        if org_resp is None or org_resp.data is None:
+        org = org_resp.data[0] if org_resp and org_resp.data else None
+        if not org:
             raise Exception("Org not found")
-        org = org_resp.data
     except Exception as e:
         logger.error("DB error fetching org: %s", e)
         raise HTTPException(status_code=503, detail="Database unavailable")
