@@ -1,4 +1,4 @@
- """Clerk JWT authentication — clean, stable version"""
+
 
 import logging
 import jwt
