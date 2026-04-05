@@ -58,6 +58,7 @@ async def get_current_user(
     token = authorization.split(" ", 1)[1]
     claims = await _verify_jwt(token)
     clerk_user_id = claims.get("sub")
+    print("USER ID:", clerk_user_id)
     if not clerk_user_id:
         raise HTTPException(
             status_code=401,
