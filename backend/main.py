@@ -1,4 +1,3 @@
-"""Zerofalse API — production entry point."""
 import sys
 import logging
 from contextlib import asynccontextmanager
@@ -28,7 +27,7 @@ async def lifespan(app: FastAPI):
         logger.critical("Supabase failed: %s", e)
         sys.exit(1)
     await _cache.get_redis()
-    logger.info("Ready — CORS: ['https://zerofalse-final.vercel.app']")
+    logger.info("Ready")
     yield
     await _cache.close()
 
@@ -40,18 +39,9 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
-
 )
 
-
-@app.middleware("http")
-async def limit_body(request: Request, call_next) -> Response:
-    cl = request.headers.get("content-length")
-    if cl and int(cl) > settings.MAX_REQUEST_BODY_BYTES:
-        return Response("Request body too large", status_code=413)
-    return await call_next(request)
-
-
+# CORS must be first
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -62,6 +52,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def limit_body(request: Request, call_next) -> Response:
+    cl = request.headers.get("content-length")
+    if cl and int(cl) > settings.MAX_REQUEST_BODY_BYTES:
+        return Response("Request body too large", status_code=413)
+    return await call_next(request)
 
 
 @app.get("/health", include_in_schema=False)
