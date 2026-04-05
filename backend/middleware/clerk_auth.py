@@ -1,5 +1,3 @@
-
-
 import logging
 import jwt
 
@@ -66,20 +64,20 @@ async def get_current_user(
             detail="Token missing sub claim"
         )
 
-    # Cache check
     cache_key = f"{AUTH_CACHE_PREFIX}{clerk_user_id}"
     cached = await cache_get(cache_key)
     if cached:
         return cached
 
     db = AsyncDB()
+    uid = clerk_user_id  # fix lambda closure
 
     # Get user
     try:
         resp = await db.execute(
             lambda c: c.table("users")
             .select("*")
-            .eq("clerk_user_id", clerk_user_id)
+            .eq("clerk_user_id", uid)
             .maybe_single()
             .execute()
         )
@@ -87,30 +85,35 @@ async def get_current_user(
         logger.error("DB error fetching user: %s", e)
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    if resp.data is None:
-        # User not found — create org + user
+    # Fix: resp itself can be None
+    user_data = resp.data if resp is not None else None
+
+    if user_data is None:
         try:
+            slug = f"org-{uid[-8:]}"
             org_resp = await db.execute(
                 lambda c: c.table("organizations")
-                .insert({
-                    "name": "Default Org",
-                    "slug": f"org-{clerk_user_id[-8:]}"
-                })
+                .insert({"name": "Default Org", "slug": slug})
                 .execute()
             )
+            if org_resp is None or not org_resp.data:
+                raise Exception("Org insert returned no data")
             org = org_resp.data[0]
+            org_id = org["id"]
 
             user_resp = await db.execute(
                 lambda c: c.table("users")
                 .insert({
-                    "clerk_user_id": clerk_user_id,
+                    "clerk_user_id": uid,
                     "email": claims.get("email", ""),
                     "full_name": claims.get("name", ""),
-                    "org_id": org["id"],
+                    "org_id": org_id,
                     "role": "admin"
                 })
                 .execute()
             )
+            if user_resp is None or not user_resp.data:
+                raise Exception("User insert returned no data")
             user = user_resp.data[0]
 
         except Exception as e:
@@ -120,17 +123,20 @@ async def get_current_user(
                 detail="User creation failed"
             )
     else:
-        user = resp.data
+        user = user_data
 
-    # Get org separately
+    # Get org
+    org_id = user["org_id"]
     try:
         org_resp = await db.execute(
             lambda c: c.table("organizations")
             .select("*")
-            .eq("id", user["org_id"])
+            .eq("id", org_id)
             .single()
             .execute()
         )
+        if org_resp is None or org_resp.data is None:
+            raise Exception("Org not found")
         org = org_resp.data
     except Exception as e:
         logger.error("DB error fetching org: %s", e)
