@@ -166,11 +166,12 @@ const APIKeys = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                   <button
-                    onClick={() => copyToClipboard(key.key_prefix, key.id)}
-                    style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: copiedId === key.id ? 'var(--color-brand)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--text-xs)' }}
-                  >
-                    {copiedId === key.id ? <Check style={{ width: '12px', height: '12px' }} /> : <Copy style={{ width: '12px', height: '12px' }} />}
-                  </button>
+                     title="Full key only shown at creation time"
+                     disabled
+                     style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'not-allowed', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--text-xs)', opacity: 0.4 }}
+                     >
+                   <Copy style={{ width: '12px', height: '12px' }} />
+                 </button>
                   {key.is_active && (
                     <button
                       onClick={() => { setShowDeleteModal(key.id); setDeleteError(''); }}
