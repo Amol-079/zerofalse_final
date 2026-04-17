@@ -478,7 +478,7 @@ class DetectionEngine:
         except Exception:
             return text
 
-   def _decode_unicode_escape(self, text: str) -> str:
+    def _decode_unicode_escape(self, text: str) -> str:
         """Decode \\u0072\\u006d style escapes"""
         try:
             return text.encode("utf-8").decode("unicode_escape", errors="ignore")
