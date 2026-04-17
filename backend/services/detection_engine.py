@@ -737,7 +737,7 @@ class DetectionEngine:
                 results.append(r)
  
         latency = (time.perf_counter() - t0) * 1000
-         if not results:
+        if not results:
             return ScanResult(
                 decision="allow", risk_score=0.0, severity="info",
                 threat_type=None, title="Tool Call Safe",
